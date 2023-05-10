@@ -1,0 +1,1587 @@
+view: gcp_billing_export {
+  view_label: "Billing"
+  derived_table: {
+    partition_keys: ["usage_start_date"]
+    increment_key: "usage_start_time"
+    #increment_offset: 24 #gcp billing extract's current partition can change until new one lands
+    #filters: [gcp_billing_export.usage_start_date: "3 months"] #always_filter in gcp_billing_explore
+    cluster_keys: ["usage_start_time","service_description","sku_description","project_name"] #frequently used fields from PDT Activity Dashboard (All Time Field Usage)
+    datagroup_trigger: daily_datagroup
+    sql: select *, generate_uuid() as pk, DATE(usage_start_time) as usage_start_date,
+          service.description as service_description, sku.description as sku_description, project.name as project_name,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'bu') AS gcp_billing_export_bu_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'type') AS gcp_billing_export_type_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cluster_id') AS gcp_billing_export_cluster_id_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'env_id') AS gcp_billing_export_env_id_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'instance_name') AS gcp_billing_export_instance_name_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'pod') AS gcp_billing_export_pod_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'region_id') AS gcp_billing_export_region_id_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'service_name') AS gcp_billing_export_service_name_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'service_function') AS gcp_billing_export_service_function_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'stack_id') AS gcp_billing_export_stack_id_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'state') AS gcp_billing_export_state_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cb_product') AS gcp_billing_export_cb_product_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cb_environment') AS gcp_billing_export_cb_environment_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cb_service') AS gcp_billing_export_cb_service_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cb_team') AS gcp_billing_export_cb_team_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cb_domain') AS gcp_billing_export_cb_domain_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cost_center') AS gcp_billing_export_cost_center_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'env_type') AS gcp_billing_export_env_type_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'shared_service_name') AS gcp_billing_export_shared_service_name_resource,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'deployment_purpose') AS gcp_billing_export_deployment_purpose_resource,
+
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'application') AS gcp_billing_export_application_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'application_owner') AS gcp_billing_export_application_owner_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'availability') AS gcp_billing_export_availability_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'backup') AS gcp_billing_export_backup_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'cost_center') AS gcp_billing_export_cost_center_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'env') AS gcp_billing_export_env_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'instance_owner') AS gcp_billing_export_instance_owner_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'location') AS gcp_billing_export_location_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'server_role') AS gcp_billing_export_server_role_it,
+          (SELECT value FROM UNNEST(billing_export.labels) WHERE key = 'servername') AS gcp_billing_export_servername_it,
+
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'env_id') AS gcp_billing_export_env_id_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'pod') AS gcp_billing_export_pod_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'region_id') AS gcp_billing_export_region_id_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'substream_id') AS gcp_billing_export_substream_id_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'service_name') AS gcp_billing_export_service_name_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'service_function') AS gcp_billing_export_service_function_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'stack_id') AS gcp_billing_export_stack_id_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'state') AS gcp_billing_export_state_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'cb_product') AS gcp_billing_export_cb_product_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'cb_environment') AS gcp_billing_export_cb_environment_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'cb_service') AS gcp_billing_export_cb_service_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'cb_team') AS gcp_billing_export_cb_team_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'cb_domain') AS gcp_billing_export_cb_domain_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'bu') AS gcp_billing_export_bu_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'cost_center') AS gcp_billing_export_cost_center_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'env_type') AS gcp_billing_export_env_type_project,
+          (SELECT value FROM UNNEST(billing_export.project.labels) WHERE key = 'shared_service_name') AS gcp_billing_export_shared_service_name_project
+
+
+          from @{BILLING_TABLE} as billing_export WHERE {% incrementcondition %} usage_start_time {% endincrementcondition %} ;;
+  }
+
+  #### RESOURCE LABELS #####
+
+  dimension: bu_resource {
+    type: string
+    view_label: "Labels"
+    group_label: "Resource"
+    label: "BU"
+    sql: ${TABLE}.gcp_billing_export_bu_resource ;;
+  }
+
+  dimension: type_resource {
+    type: string
+    view_label: "Labels"
+    group_label: "Resource"
+    label: "Type"
+    sql: ${TABLE}.gcp_billing_export_type_resource ;;
+  }
+
+
+  dimension: cluster_id {
+    view_label: "Labels"
+    label: "Cluster ID"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cluster_id_resource  ;;
+  }
+
+  dimension: env_id_resource {
+    view_label: "Labels"
+    label: "Environment ID"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_env_id_resource  ;;
+    }
+
+  dimension: instance_name {
+    view_label: "Labels"
+    label: "Instance Name"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_instance_name_resource  ;;
+    }
+
+  dimension: pod_resource {
+    view_label: "Labels"
+    label: "Pod"
+    group_label: "Resource"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID={{ pod_resource._value }}&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_pod_resource  ;;
+    }
+
+  dimension: region_id_resource {
+    view_label: "Labels"
+    label: "Region ID"
+    group_label: "Resource"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID={{ region_id_resource._value }}&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_region_id_resource  ;;
+    }
+
+  dimension: service_name_resource {
+    view_label: "Labels"
+    label: "Service Name"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_service_name_resource  ;;
+    }
+
+  dimension: service_function_resource {
+    view_label: "Labels"
+    label: "Service Function"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_service_function_resource  ;;
+    }
+
+  dimension: stack_id_resource {
+    view_label: "Labels"
+    label: "Stack ID"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_stack_id_resource  ;;
+    }
+
+  dimension: state_resource {
+    view_label: "Labels"
+    label: "State"
+    group_label: "Resource"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State={{ state_resource._value }}&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_state_resource  ;;
+    }
+
+  dimension: cb_product_resource {
+    view_label: "Labels"
+    label: "CB Product"
+    group_label: "Resource"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product={{ cb_product_resource._value }}&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_cb_product_resource  ;;
+    }
+
+  dimension: cb_environment_resource {
+    view_label: "Labels"
+    label: "CB Environment"
+    group_label: "Resource"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment={{ cb_environment_resource._value }}&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_cb_environment_resource  ;;
+    }
+
+  dimension: cb_service_resource {
+    view_label: "Labels"
+    label: "CB Service"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_service_resource  ;;
+    }
+
+  dimension: cb_team_resource {
+    view_label: "Labels"
+    label: "CB Team"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_team_resource  ;;
+    }
+
+  dimension: cb_domain_resource {
+    view_label: "Labels"
+    label: "CB Domain"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_domain_resource  ;;
+    }
+
+  dimension: cost_center_resource {
+    view_label: "Labels"
+    label: "Cost Center"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cost_center_resource  ;;
+    }
+
+  dimension: env_type_resource {
+    view_label: "Labels"
+    label: "Environment Type"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_env_type_resource  ;;
+    }
+
+  dimension: shared_service_name_resource {
+    view_label: "Labels"
+    label: "Shared Service Name"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_shared_service_name_resource  ;;
+    }
+
+  dimension: deployment_purpose_resource {
+    view_label: "Labels"
+    label: "Deployment Purpose"
+    group_label: "Resource"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_deployment_purpose_resource  ;;
+    }
+
+  ######## IT Labels ########
+
+  dimension: application {
+    view_label: "Labels"
+    label: "Application"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_application_it  ;;
+  }
+
+  dimension: application_owner {
+    view_label: "Labels"
+    label: "Application Owner"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_application_owner_it  ;;
+  }
+
+  dimension: availability {
+    view_label: "Labels"
+    label: "Availability"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_availability_it  ;;
+   }
+
+  dimension: backup {
+    view_label: "Labels"
+    label: "Backup"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_backup_it  ;;
+  }
+
+  dimension: cost_center_it {
+    view_label: "Labels"
+    label: "Cost Center"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cost_center_it  ;;
+  }
+
+  dimension: env {
+    view_label: "Labels"
+    label: "Env"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_env_it  ;;
+  }
+
+  dimension: instance_owner {
+    view_label: "Labels"
+    label: "Instance Owner"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_instance_owner_it  ;;
+  }
+
+  dimension: location {
+    view_label: "Labels"
+    label: "Location"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_location_it  ;;
+  }
+
+  dimension: server_role {
+    view_label: "Labels"
+    label: "Server Role"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_server_role_it  ;;
+  }
+
+  dimension: servername {
+    view_label: "Labels"
+    label: "Server Name"
+    group_label: "IT"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_servername_it  ;;
+  }
+
+  ######## Project Labels ########
+
+  dimension: env_id_project {
+    view_label: "Labels"
+    label: "Environment ID"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_env_id_project ;;
+  }
+
+  dimension: pod_project {
+    view_label: "Labels"
+    label: "Pod"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_pod_project ;;
+  }
+
+  dimension: region_id_project {
+    view_label: "Labels"
+    label: "Region ID"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_region_id_project ;;
+  }
+
+  dimension: sub_stream_id {
+    view_label: "Labels"
+    label: "Sub Stream ID"
+    group_label: "GUID"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_substream_id_project ;;
+  }
+
+  dimension: service_name_project {
+    view_label: "Labels"
+    label: "Service Name"
+    group_label: "Project"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name={{ service_name_project._value }}&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_service_name_project ;;
+  }
+
+  dimension: service_function_project {
+    view_label: "Labels"
+    label: "Service Function"
+    group_label: "Project"
+    hidden: yes
+    type: string
+    sql: ${TABLE}.gcp_billing_export_service_function_project ;;
+  }
+
+  dimension: stack_id_project {
+    view_label: "Labels"
+    label: "Stack ID"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_stack_id_project ;;
+  }
+
+  dimension: state_project {
+    view_label: "Labels"
+    label: "State"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_state_project ;;
+  }
+
+  dimension: cb_product_project {
+    view_label: "Labels"
+    label: "CB Product"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_product_project ;;
+  }
+
+  dimension: cb_environment_project {
+    view_label: "Labels"
+    label: "CB Environment"
+    group_label: "Project"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment={{ cb_environment_project._value }}&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_cb_environment_project ;;
+  }
+
+  dimension: cb_service_project {
+    view_label: "Labels"
+    label: "CB Service"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_service_project ;;
+  }
+
+  dimension: cb_team_project {
+    view_label: "Labels"
+    label: "CB Team"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_team_project ;;
+  }
+
+  dimension: cb_domain_project {
+    view_label: "Labels"
+    label: "CB Domain"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_cb_domain_project ;;
+  }
+
+  dimension: bu_project {
+    view_label: "Labels"
+    label: "BU"
+    group_label: "Project"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU={{ bu_project._value }}&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_bu_project ;;
+  }
+
+  dimension: cost_center_project {
+    view_label: "Labels"
+    label: "Cost Center"
+    group_label: "Project"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center={{ cost_center_project._value }}&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+    }
+    sql: ${TABLE}.gcp_billing_export_cost_center_project ;;
+  }
+
+  dimension: env_type_project {
+    view_label: "Labels"
+    label: "Environment Type"
+    group_label: "Project"
+    type: string
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type={{ env_type_project._value }}"
+    }
+    sql: ${TABLE}.gcp_billing_export_env_type_project ;;
+  }
+
+  dimension: shared_service_name_project {
+    view_label: "Labels"
+    label: "Shared Service Name"
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.gcp_billing_export_shared_service_name_project ;;
+  }
+
+############################################################
+
+  ######## Project Labels ########
+
+  # dimension: env_id_project {
+  #   view_label: "Labels"
+  #   label: "Environment ID"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'env_id')  ;;
+  # }
+
+  # dimension: pod_project {
+  #   view_label: "Labels"
+  #   label: "Pod"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'pod')  ;;
+  # }
+
+  # dimension: region_id_project {
+  #   view_label: "Labels"
+  #   label: "Region ID"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'region_id')  ;;
+  # }
+
+  # dimension: sub_stream_id {
+  #   view_label: "Labels"
+  #   label: "Sub Stream ID"
+  #   group_label: "GUID"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'substream_id') ;;
+  # }
+
+  # dimension: service_name_project {
+  #   view_label: "Labels"
+  #   label: "Service Name"
+  #   group_label: "Project"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name={{ service_name_project._value }}&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'service_name')  ;;
+  # }
+
+  # dimension: service_function_project {
+  #   view_label: "Labels"
+  #   label: "Service Function"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'service_function')  ;;
+  # }
+
+  # dimension: stack_id_project {
+  #   view_label: "Labels"
+  #   label: "Stack ID"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'stack_id')  ;;
+  # }
+
+  # dimension: state_project {
+  #   view_label: "Labels"
+  #   label: "State"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'state')  ;;
+  # }
+
+  # dimension: cb_product_project {
+  #   view_label: "Labels"
+  #   label: "CB Product"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'cb_product')  ;;
+  # }
+
+  # dimension: cb_environment_project {
+  #   view_label: "Labels"
+  #   label: "CB Environment"
+  #   group_label: "Project"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment={{ cb_environment_project._value }}&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'cb_environment')  ;;
+  # }
+
+  # dimension: cb_service_project {
+  #   view_label: "Labels"
+  #   label: "CB Service"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'cb_service')  ;;
+  # }
+
+  # dimension: cb_team_project {
+  #   view_label: "Labels"
+  #   label: "CB Team"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'cb_team')  ;;
+  # }
+
+  # dimension: cb_domain_project {
+  #   view_label: "Labels"
+  #   label: "CB Domain"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'cb_domain')  ;;
+  # }
+
+  # dimension: bu_project {
+  #   view_label: "Labels"
+  #   label: "BU"
+  #   group_label: "Project"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU={{ bu_project._value }}&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'bu')  ;;
+  # }
+
+  # dimension: cost_center_project {
+  #   view_label: "Labels"
+  #   label: "Cost Center"
+  #   group_label: "Project"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center={{ cost_center_project._value }}&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'cost_center')  ;;
+  # }
+
+  # dimension: env_type_project {
+  #   view_label: "Labels"
+  #   label: "Environment Type"
+  #   group_label: "Project"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type={{ env_type_project._value }}"
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'env_type')  ;;
+  # }
+
+  # dimension: shared_service_name_project {
+  #   view_label: "Labels"
+  #   label: "Shared Service Name"
+  #   group_label: "Project"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${project__labels}) WHERE key = 'shared_service_name')  ;;
+  # }
+
+  ######## Resource Labels ########
+
+  # dimension: bu_resource {
+  #   view_label: "Labels"
+  #   label: "BU"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'bu')  ;;
+  # }
+
+  # dimension: cluster_id {
+  #   view_label: "Labels"
+  #   label: "Cluster ID"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cluster_id')  ;;
+  # }
+
+  # dimension: env_id_resource {
+  #   view_label: "Labels"
+  #   label: "Environment ID"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'env_id')  ;;
+  # }
+
+  # dimension: instance_name {
+  #   view_label: "Labels"
+  #   label: "Instance Name"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'instance_name')  ;;
+  # }
+
+  # dimension: pod_resource {
+  #   view_label: "Labels"
+  #   label: "Pod"
+  #   group_label: "Resource"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID={{ pod_resource._value }}&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'pod')  ;;
+  # }
+
+  # dimension: region_id_resource {
+  #   view_label: "Labels"
+  #   label: "Region ID"
+  #   group_label: "Resource"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID={{ region_id_resource._value }}&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'region_id')  ;;
+  # }
+
+  # dimension: service_name_resource {
+  #   view_label: "Labels"
+  #   label: "Service Name"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'service_name')  ;;
+  # }
+
+  # dimension: service_function_resource {
+  #   view_label: "Labels"
+  #   label: "Service Function"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'service_function')  ;;
+  # }
+
+  # dimension: stack_id_resource {
+  #   view_label: "Labels"
+  #   label: "Stack ID"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'stack_id')  ;;
+  # }
+
+  # dimension: state_resource {
+  #   view_label: "Labels"
+  #   label: "State"
+  #   group_label: "Resource"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product=&Resource+State={{ state_resource._value }}&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'state')  ;;
+  # }
+
+  # dimension: cb_product_resource {
+  #   view_label: "Labels"
+  #   label: "CB Product"
+  #   group_label: "Resource"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment=&Project+Cost+Center=&Resource+CB+Product={{ cb_product_resource._value }}&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cb_product')  ;;
+  # }
+
+  # dimension: cb_environment_resource {
+  #   view_label: "Labels"
+  #   label: "CB Environment"
+  #   group_label: "Resource"
+  #   type: string
+  #   link: {
+  #     label: "Usage Deep Dive"
+  #     url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID=&Service+Type=&Resource+CB+Environment={{ cb_environment_resource._value }}&Project+Cost+Center=&Resource+CB+Product=&Resource+State=&Project+CB+Environment=&Resouce+Pod+ID=&Resource+Region+ID=&Project+BU=&Project+Service+Name=&Project+Environment+Type="
+  #   }
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cb_environment')  ;;
+  # }
+
+  # dimension: cb_service_resource {
+  #   view_label: "Labels"
+  #   label: "CB Service"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cb_service')  ;;
+  # }
+
+  # dimension: cb_team_resource {
+  #   view_label: "Labels"
+  #   label: "CB Team"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cb_team')  ;;
+  # }
+
+  # dimension: cb_domain_resource {
+  #   view_label: "Labels"
+  #   label: "CB Domain"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cb_domain')  ;;
+  # }
+
+  # dimension: cost_center_resource {
+  #   view_label: "Labels"
+  #   label: "Cost Center"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cost_center')  ;;
+  # }
+
+  # dimension: env_type_resource {
+  #   view_label: "Labels"
+  #   label: "Environment Type"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'env_type')  ;;
+  # }
+
+  # dimension: shared_service_name_resource {
+  #   view_label: "Labels"
+  #   label: "Shared Service Name"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'shared_service_name')  ;;
+  # }
+
+  # dimension: deployment_purpose_resource {
+  #   view_label: "Labels"
+  #   label: "Deployment Purpose"
+  #   group_label: "Resource"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'deployment_purpose')  ;;
+  # }
+
+######## IT Labels ########
+
+  # dimension: application {
+  #   view_label: "Labels"
+  #   label: "Application"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'application')  ;;
+  # }
+
+  # dimension: application_owner {
+  #   view_label: "Labels"
+  #   label: "Application Owner"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'application_owner')  ;;
+  # }
+
+  # dimension: availability {
+  #   view_label: "Labels"
+  #   label: "Availability"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'availability')  ;;
+  # }
+
+  # dimension: backup {
+  #   view_label: "Labels"
+  #   label: "Backup"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'backup')  ;;
+  # }
+
+  # dimension: cost_center_it {
+  #   view_label: "Labels"
+  #   label: "Cost Center"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'cost_center')  ;;
+  # }
+
+  # dimension: env {
+  #   view_label: "Labels"
+  #   label: "Env"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'env')  ;;
+  # }
+
+  # dimension: instance_owner {
+  #   view_label: "Labels"
+  #   label: "Instance Owner"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'instance_owner')  ;;
+  # }
+
+  # dimension: location {
+  #   view_label: "Labels"
+  #   label: "Location"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'location')  ;;
+  # }
+
+  # dimension: server_role {
+  #   view_label: "Labels"
+  #   label: "Server Role"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'server_role')  ;;
+  # }
+
+  # dimension: servername {
+  #   view_label: "Labels"
+  #   label: "Server Name"
+  #   group_label: "IT"
+  #   type: string
+  #   sql: (SELECT value FROM UNNEST(${labels}) WHERE key = 'servername')  ;;
+  # }
+
+  ###################################
+
+  dimension: pk {
+    hidden: yes
+    primary_key: yes
+     sql: ${TABLE}.pk ;;
+   }
+
+  dimension: partition_date {
+    hidden: yes
+    type: date
+    group_label: "Partition Fields"
+    sql: TIMESTAMP(${TABLE}.usage_start_date) ;;
+  }
+
+  dimension: adjustment_info__description {
+    type: string
+    sql: ${TABLE}.adjustment_info.description ;;
+    group_label: "Adjustment Info Description"
+    group_item_label: "Description"
+  }
+
+  dimension: adjustment_info__id {
+    type: string
+    sql: ${TABLE}.adjustment_info.id ;;
+    group_label: "Adjustment Info"
+    group_item_label: "ID"
+  }
+
+  dimension: adjustment_info__mode {
+    type: string
+    sql: ${TABLE}.adjustment_info.mode ;;
+    group_label: "Adjustment Info"
+    group_item_label: "Mode"
+  }
+
+  dimension: adjustment_info__type {
+    type: string
+    sql: ${TABLE}.adjustment_info.type ;;
+    group_label: "Adjustment Info"
+    group_item_label: "Type"
+  }
+
+  dimension: billing_account_id {
+    type: string
+    sql: ${TABLE}.billing_account_id ;;
+  }
+
+  dimension: cloud {
+    type: string
+    sql: 'GCPe' ;;
+    link: {
+      label: "{{ value }} Cost Management"
+      url: "/dashboards/gcp_billing::gcp_summary"
+      icon_url: "looker.com/favicon.ico"
+    }
+  }
+
+  dimension: cost {
+    type: number
+    sql: ${TABLE}.cost ;;
+  }
+
+  dimension: cost_type {
+    type: string
+    sql: ${TABLE}.cost_type ;;
+  }
+
+  dimension: credits {
+    hidden: yes
+    sql: ${TABLE}.credits ;;
+  }
+
+  dimension: currency {
+    group_label: "Currency"
+    type: string
+    sql: ${TABLE}.currency ;;
+  }
+
+  dimension: currency_conversion_rate {
+    group_label: "Currency"
+    type: number
+    sql: ${TABLE}.currency_conversion_rate ;;
+  }
+
+  dimension_group: export {
+    type: time
+    timeframes: [
+      raw,
+      time,
+      date,
+      week,
+      month,
+      quarter,
+      year
+    ]
+    sql: ${TABLE}.export_time ;;
+  }
+
+  dimension_group: invoice_month {
+    label: "Invoice"
+    type: time
+    datatype: date
+    timeframes: [
+      month,
+      quarter
+    ]
+    sql: date(CAST(substring(${TABLE}.invoice.month,1,4) AS int),CAST(substring(${TABLE}.invoice.month,5,2) AS int),01);;
+  }
+
+  dimension: labels {
+    hidden: yes
+    sql: ${TABLE}.labels ;;
+  }
+
+  dimension: location__country {
+    type: string
+    sql: ${TABLE}.location.country ;;
+    group_label: "Location"
+    group_item_label: "Country"
+  }
+
+  dimension: location__location {
+    type: string
+    sql: ${TABLE}.location.location ;;
+    group_label: "Location"
+    group_item_label: "Location"
+  }
+
+  dimension: location__region {
+    type: string
+    sql: ${TABLE}.location.region ;;
+    group_label: "Location"
+    group_item_label: "Region"
+  }
+
+  dimension: location__zone {
+    type: string
+    sql: ${TABLE}.location.zone ;;
+    group_label: "Location"
+    group_item_label: "Zone"
+  }
+
+  dimension: project__ancestry_numbers {
+    type: string
+    sql: ${TABLE}.project.ancestry_numbers ;;
+    group_label: "Project"
+    group_item_label: "Ancestry Numbers"
+  }
+
+  dimension: project__id {
+    type: string
+    sql: COALESCE(IF(${service__description} = 'Support', 'Support', ${TABLE}.project.id),"Unknown") ;;
+    group_label: "Project"
+    group_item_label: "ID"
+  }
+
+  dimension: project__labels {
+    hidden: yes
+    sql: ${TABLE}.project.labels ;;
+    group_label: "Project"
+    group_item_label: "Labels"
+  }
+
+  dimension: project__name {
+    type: string
+    sql: ${TABLE}.project.name ;;
+    group_label: "Project"
+    group_item_label: "Name"
+    link: {
+      label: "{% if project__id._value != 'Support' and project__id._value  != 'Unknown' %} View Project in Console {% endif %}"
+      url: "https://console.cloud.google.com/home/dashboard?project={{ project__id._value }}"
+      icon_url: "https://i.pinimg.com/originals/92/b2/66/92b266df967b8540c94301eacdec391b.png"
+    }
+    link: {
+      label: "Usage Deep Dive"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/7?Project+ID={{ project__id._value }}&Service+Type="
+    }
+  }
+
+  # dimension: project__number {
+  #   type: string
+  #   sql: ${TABLE}.project.number ;;
+  #   group_label: "Project"
+  #   group_item_label: "Number"
+  # }
+
+  dimension: service__description {
+    label: "Service Description"
+    type: string
+    sql: ${TABLE}.service.description ;;
+    group_label: "Service"
+    group_item_label: "Description"
+    link: {
+      label: "{% if value contains 'BigQuery' %} BigQuery Deep Dive {% endif %}"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/1?Project%20ID=&Billing%20Account%20ID="
+    }
+    link: {
+      label: "{% if value contains 'Compute Engine' %} Compute Engine Deep Dive {% endif %}"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/3?Billing+Account+ID="
+    }
+    link: {
+      label: "{% if value contains 'Cloud Storage' %} Cloud Storage Deep Dive {% endif %}"
+      url: "https://ukgfinops.cloud.looker.com/dashboards/2?Project%20ID=&Billing%20Account%20ID="
+    }
+  }
+
+  dimension: service__id {
+    type: string
+    sql: ${TABLE}.service.id ;;
+    group_label: "Service"
+    group_item_label: "ID"
+  }
+
+  dimension: sku__description {
+    type: string
+    sql: ${TABLE}.sku.description ;;
+    group_label: "SKU"
+    group_item_label: "Description"
+  }
+
+  dimension: sku__id {
+    type: string
+    sql: ${TABLE}.sku.id ;;
+    group_label: "SKU"
+    group_item_label: "ID"
+  }
+
+  dimension: system_labels {
+    hidden: yes
+    sql: ${TABLE}.system_labels ;;
+  }
+
+  dimension: usage__amount {
+    type: number
+    sql: ${TABLE}.usage.amount ;;
+    group_label: "Usage"
+    group_item_label: "Amount"
+  }
+
+  dimension: usage__amount_in_pricing_units {
+    type: number
+    sql: ${TABLE}.usage.amount_in_pricing_units ;;
+    group_label: "Usage"
+    group_item_label: "Amount In Pricing Units"
+  }
+
+  measure: total_usage_amount_in_pricing_units{
+    type: sum
+    value_format_name: decimal_2
+    sql: ${usage__amount_in_pricing_units};;
+    group_label: "Usage"
+  }
+
+  dimension: usage__pricing_unit {
+    type: string
+    sql: ${TABLE}.usage.pricing_unit ;;
+    group_label: "Usage"
+    value_format_name: decimal_0
+    group_item_label: "Pricing Unit"
+  }
+
+  dimension: usage__unit {
+    type: string
+    sql: ${TABLE}.usage.unit ;;
+    group_label: "Usage"
+    group_item_label: "Unit"
+  }
+
+  dimension: usage__calculated_unit {
+    type: string
+    sql: CASE
+      -- VCPU RAM
+        WHEN ${usage__pricing_unit} = 'gibibyte hour' THEN 'GB'
+      -- VCPU Cores
+        WHEN ${usage__pricing_unit} = 'hour' THEN 'Count'
+      -- PD Storage
+      -- WHEN usage.pricing_unit = 'gibibyte month' THEN ROUND(SUM(usage.amount_in_pricing_units) * 30, 2)
+      ELSE ${usage__pricing_unit} END;;
+    group_label: "Usage"
+    group_item_label: "Calculated Unit"
+  }
+
+  dimension_group: usage_end {
+    type: time
+    timeframes: [
+      raw,
+      time,
+      date,
+      week,
+      month,
+      quarter,
+      year,
+      month_name
+    ]
+    sql: ${TABLE}.usage_end_time ;;
+  }
+
+  dimension_group: usage_start {
+    type: time
+    timeframes: [
+      raw,
+      time,
+      date,
+      week,
+      month,
+      quarter,
+      year,
+      month_name
+    ]
+    sql: ${TABLE}.usage_start_time ;;
+  }
+
+  measure: count {
+    hidden: no
+    type: count
+    drill_fields: [project__name]
+  }
+
+  measure: usage__amount_in_calculated_units {
+    value_format_name: decimal_2
+    type: sum
+    sql: CASE
+      -- VCPU RAM
+        WHEN usage.pricing_unit = 'gibibyte hour' THEN ${usage__amount_in_pricing_units}/24
+      -- VCPU Cores
+        WHEN usage.pricing_unit = 'hour' THEN ${usage__amount_in_pricing_units}/24
+      -- PD Storage
+      -- WHEN usage.pricing_unit = 'gibibyte month' THEN ROUND(SUM(usage.amount_in_pricing_units) * 30, 2)
+      ELSE ${usage__amount_in_pricing_units}
+    END;;
+    group_item_label: "Total Usage Amount in Calculated Units"
+    group_label: "Usage"
+    drill_fields: [project__name,service__description,total_cost, total_usage_amount]
+  }
+
+  measure: total_usage_amount {
+    type: sum
+    sql: ${usage__amount} ;;
+    group_label: "Usage"
+    drill_fields: [project__name,service__description,total_cost, total_usage_amount]
+  }
+
+  measure: total_cost {
+    type: sum
+    sql: ${cost} ;;
+    value_format_name: usd_0
+    #value_format: "#,##0.00"
+    #html: <a href="#drillmenu" target="_self">{{ currency_symbol._value }}{{ rendered_value }}</a>;;
+    drill_fields: [project__name,service__description,total_cost]
+  }
+
+  measure: total_net_cost {
+    type: number
+   # sql: ${total_cost} - ${total_credit_amount} ;;
+    sql: ${total_cost} - ${gcp_billing_export__credits.total_credit_amount};;
+    #value_format: "#,##0.00"
+    value_format_name: usd_0
+    #html: <a href="#drillmenu" target="_self">{{ currency_symbol._value }}{{ rendered_value }}</a>;;
+    drill_fields: [project__name,service__description,total_cost, gcp_billing_export__credits.total_credit_amount, usage__unit,usage__amount_in_calculated_units]
+  }
+
+  # measure: total_credit_amount {
+  #   type: sum
+  #   view_label: "Credits"
+  #   sql: -1*${gcp_billing_export__credits.amount} ;;
+  #   value_format_name: usd_0
+  # }
+
+  dimension: credit_amount {
+    type: number
+    hidden: yes
+    sql: ( SELECT SUM(-gcp_billing_export__credits.amount) FROM UNNEST(gcp_billing_export.credits) as gcp_billing_export__credits  ) ;;
+  }
+
+  dimension: total_net_cost_dimension {
+    hidden: yes
+    type: number
+    sql: case when ${credit_amount} IS null then ${cost}
+    else ${cost}-${credit_amount} end ;;
+    value_format_name: usd_0
+  }
+
+  dimension: id_grouping {
+    label: "ID Grouping"
+    type: string
+    sql: case when ${billing_account_id} = "011184-94340C-0FCEFC" then "IT"
+    when ${billing_account_id} = "01EC3B-CB3468-8C9AA4" then "Security"
+    when ${billing_account_id} = "01EC3B-CB3468-8C9AA4" then "UKG SaaS Engineering"
+    when ${billing_account_id} = "018737-F5C9DA-5014BE" then "UKG SaaS Production"
+    else "Cloud Reach Legacy" end;;
+  }
+
+
+  ###### CUD METRICS #######
+
+  dimension: machine_type {
+    type: string
+    sql: case when ${sku__description} like"%N1%" then "N1"
+          when ${sku__description} like "%N2D%" then "N2D"
+          when ${sku__description} like "%N2%" then "N2"
+          when ${sku__description} like "%E2%" then "E2"
+          when ${sku__description} like "%Sole Tenant%" then "Sole Tenant"
+          when ${sku__description} like "%C2%" then "C2"
+          when ${sku__description} like "%M2%" then "M2"
+          when ${sku__description} like "%Commitment v1: Cpu in%" then "N1"
+          when ${sku__description} like "%Commitment v1: Ram in%" then "N1"
+          when ${sku__description} like "%Memory-optimized%" then "M1"
+          when ${sku__description} like "%Custom Instance%" then "N1"
+          when ${sku__description} like "%Compute optimized%" then "C2"
+          else "Other" end;;
+  }
+
+  measure: commitment_on_demand {
+    type: number
+    hidden: yes
+    value_format_name: usd
+    label: "Commitment Cost at on Demand Rates"
+    group_label: "CUD Costs"
+    sql: ${total_cost_at_on_demand_rates} - ${total_non_cud_cost} ;;
+  }
+
+  measure: total_non_cud_cost {
+    type: number
+    group_label: "CUD Costs"
+    value_format_name: usd
+    sql:${total_cost}-${total_cud_cost};;
+    label: "Total Non CUD Cost"
+  }
+
+  measure: total_cost_at_on_demand_rates {
+    type: sum
+    hidden: yes
+    value_format_name: usd
+    group_label: "CUD"
+    sql: case when LOWER(${sku__description}) LIKE "commitment%" then 0 else ${cost} end  ;;
+  }
+
+  measure: total_cud_cost {
+    type: sum
+    group_label: "CUD Costs"
+    label: "Total CUD Cost"
+    sql: case when LOWER(${sku__description}) LIKE "commitment%" then ${cost} else 0 end;;
+    value_format_name: usd
+  }
+
+  measure: cud_coverage {
+    type: number
+    value_format_name: percent_0
+    group_label: "CUD Costs"
+    label: "CUD Coverage Costs"
+    sql: ${total_cud_cost}/NullIF(${total_cost_at_on_demand_rates},0) ;;
+  }
+
+  measure: total_cost_commitment {
+    hidden: yes
+    filters: [gcp_billing_export__credits.type: "COMMITTED_USAGE_DISCOUNT"]
+    type: sum
+    sql: ${cost} ;;
+}
+  measure: active_commitment{
+    type: sum
+    group_label: "CUD Usage"
+    value_format_name: decimal_0
+    sql: ${usage__amount}/86400 ;;
+    filters: [sku__description: "Commitment%",
+      pricing.pricing_usage_type: "Commitment"]
+  }
+
+  measure: utilizied_commitment{
+    type: number
+    group_label: "CUD Usage"
+    value_format_name: decimal_0
+    sql: case when ${cud_amount_in_billing_units} != 0 then ${usage_costs}*ABS(${cud_amount_in_billing_units}) else null end ;;
+  }
+
+  measure: cud_amount_in_billing_units {
+    type: sum
+    group_label: "CUD"
+    hidden: yes
+    value_format_name: decimal_0
+    label: "CUD Amount in Billing Units"
+    filters: [gcp_billing_export__credits.type: "COMMITTED_USAGE_DISCOUNT"]
+    sql: ${gcp_billing_export__credits.amount} ;;
+  }
+
+  measure: usage_costs {
+    type: number
+    hidden: yes
+    group_label: "CUD"
+    value_format_name: decimal_0
+    #sql: case when ${total_cost} != 0 then ${all_usage}/${total_cost} else 0 end ;;
+    sql: case when ${total_cost_commitment} != 0 then ${all_usage}/${total_cost_commitment} else 0 end ;;
+  }
+
+  measure: all_usage {
+    label: "All Usage"
+    type: sum
+    group_label: "CUD Usage"
+    value_format_name: decimal_0
+    filters: [sku__description: "-Commitment%",gcp_billing_export__credits.type: "COMMITTED_USAGE_DISCOUNT" ]
+    sql: ${usage__amount}/86400 ;;
+  }
+
+  measure: eligible_on_demand_usage {
+    type: number
+    group_label: "CUD Usage"
+    value_format_name: decimal_0
+    sql: ${all_usage}-NullIF(${utilizied_commitment},0) ;;
+  }
+
+  dimension: cpu_or_ram  {
+    label: "CPU or RAM"
+    type: string
+    sql:
+    case when ${sku__description} like "%Cpu%" then "CPU"
+    when ${sku__description} like "%CPU%" then "CPU"
+    when ${sku__description} like "%Core%" then "CPU"
+    when ${sku__description} like "%Ram%" then "RAM"
+    else "Other" end;;
+  }
+
+  # #### FINANCE METRICS ####
+
+  # dimension: location_grouping {
+  #   type: string
+  #   sql: case when ${location__location} like "%us-central%" then "us-central"
+  #   when ${location__location} like "%us-east%" then "us-east"
+  #   else "other" end;;
+  # }
+
+  # dimension: env_grouping {
+  #   type: string
+  #   sql: case when ${env_id_resource} = "cfn01" then "cfn01"
+  #         when ${env_id_resource} = "cfn03" then "cfn03"
+  #         when ${env_id_resource} = "cfn04" then "cfn04"
+  #         when ${env_id_resource} = "cfn05" then "cfn05"
+  #         when ${env_id_resource} = "cfn06" then "cfn06"
+  #         when ${env_id_resource} = "evl01" then "evl01"
+  #         else "other" end;;
+  # }
+
+  # measure: shared_cost{
+  #   value_format_name: usd_0
+  #   type: number
+  #   sql: ${total_net_cost}/5 ;;
+  # }
+}
+
+view: gcp_billing_export__labels {
+  view_label: "Labels"
+
+  dimension: key {
+    group_label: "Billing Export"
+    type: string
+    hidden: no
+    sql: ${TABLE}.key ;;
+  }
+
+  dimension: value {
+    group_label: "Billing Export"
+    type: string
+    hidden: no
+    sql: ${TABLE}.value ;;
+  }
+}
+
+view: gcp_billing_export__credits {
+  view_label: "Credits"
+  drill_fields: [id]
+
+  dimension: pk {
+    primary_key: yes
+    hidden: yes
+    sql: concat(${name},${gcp_billing_export.pk},${amount}) ;;
+  }
+
+  dimension: id {
+    type: string
+    sql: ${TABLE}.id ;;
+  }
+
+  dimension: amount {
+    type: number
+    sql: ${TABLE}.amount ;;
+  }
+
+  dimension: full_name {
+    type: string
+    sql: ${TABLE}.full_name ;;
+  }
+
+  dimension: name {
+    type: string
+    sql: ${TABLE}.name ;;
+  }
+
+  dimension: type {
+    type: string
+    sql: case when ${name} like "%Committed Usage%" then "COMMITTED_USAGE_DISCOUNT"
+              when ${name} like "%Sustained Usage%" then "SUSTAINED_USAGE_DISCOUNT"
+              else ${TABLE}.type end;;
+    drill_fields: [name]
+  }
+
+  measure: total_credit_amount {
+    label: "Total Credit Amount"
+    type: sum
+    hidden: no
+    #value_format: "#,##0.00"
+    #html: <a href="#drillmenu" target="_self">{{ gcp_billing_export.currency_symbol._value }}{{ rendered_value }}</a>;;
+    value_format_name: usd_0
+    sql: -1*${amount} ;;
+    drill_fields: [gcp_billing_export__credits.type,gcp_billing_export__credits.total_credit_amount]
+  }
+
+  measure: total_sustained_use_discount {
+    view_label: "Credits"
+    type: sum
+    value_format_name: usd_0
+    #value_format: "#,##0.00"
+    #html: <a href="#drillmenu" target="_self">{{ gcp_billing_export.currency_symbol._value }}{{ rendered_value }}</a>;;
+    sql: -1*${amount} ;;
+    filters: [gcp_billing_export__credits.type: "SUSTAINED_USAGE_DISCOUNT"]
+    drill_fields: [gcp_billing_export__credits.id,gcp_billing_export__credits.name,total_credit_amount]
+  }
+
+  measure: total_committed_use_discount {
+    view_label: "Credits"
+    type: sum
+    value_format_name: usd_0
+    #value_format: "#,##0.00"
+    #html: <a href="#drillmenu" target="_self">{{ gcp_billing_export.currency_symbol._value }}{{ rendered_value }}</a>;;
+    sql: -1*${amount} ;;
+    filters: [gcp_billing_export__credits.type: "COMMITTED_USAGE_DISCOUNT, COMMITTED_USAGE_DISCOUNT_DOLLAR_BASE"]
+    drill_fields: [gcp_billing_export__credits.id,gcp_billing_export__credits.name,total_credit_amount]
+  }
+
+  measure: total_promotional_credit {
+    view_label: "Credits"
+    type: sum
+    value_format_name: usd_0
+    #value_format: "#,##0.00"
+    #html: <a href="#drillmenu" target="_self">{{ gcp_billing_export.currency_symbol._value }}{{ rendered_value }}</a>;;
+    sql: -1*${amount} ;;
+    filters: [gcp_billing_export__credits.type: "PROMOTION"]
+    drill_fields: [gcp_billing_export__credits.id,gcp_billing_export__credits.name,total_credit_amount]
+  }
+}
+
+view: gcp_billing_export__system_labels {
+  view_label: "Labels"
+  dimension: key {
+    group_label: "System"
+    type: string
+    hidden: no
+    sql: ${TABLE}.key ;;
+  }
+
+  dimension: value {
+    group_label: "System"
+    type: string
+    hidden: no
+    sql: ${TABLE}.value ;;
+  }
+}
+
+view: gcp_billing_export__project__labels {
+  view_label: "Labels"
+  dimension: key {
+    group_label: "Project"
+    type: string
+    sql: ${TABLE}.key ;;
+  }
+
+  dimension: value {
+    group_label: "Project"
+    type: string
+    hidden: no
+    sql: ${TABLE}.value ;;
+  }
+}
