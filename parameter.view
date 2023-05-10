@@ -1,0 +1,139 @@
+include: "/views/gcp_billing_export.view.lkml"
+include: "/views/value_stream_info.view.lkml"
+
+view: +gcp_billing_export {
+  parameter: category {
+    hidden: yes
+    label: "Category"
+    view_label: "Category Picker"
+    type: unquoted
+    allowed_value: {
+      label: "Service Type"
+      value: "service__description"
+    }
+    allowed_value: {
+      label: "Region"
+      value: "location__region"
+    }
+    allowed_value: {
+      label: "Project ID"
+      value: "project__id"
+    }
+    allowed_value: {
+      label: "Billing Account ID"
+      value: "billing_account_id"
+    }
+    allowed_value: {
+      label: "Resource CB Environment"
+      value: "cb_environment_resource"
+    }
+    allowed_value: {
+      label: "Resource CB Product"
+      value: "cb_product_resource"
+    }
+    allowed_value: {
+      label: "Resource Pod ID"
+      value: "pod_resource"
+    }
+    allowed_value: {
+      label: "Resource Region ID"
+      value: "region_id_resource"
+    }
+    allowed_value: {
+      label: "Resource State"
+      value: "state_resource"
+    }
+    allowed_value: {
+      label: "Project BU"
+      value: "bu_project"
+    }
+    allowed_value: {
+      label: "Project CB Environment"
+      value: "cb_environment_project"
+    }
+    allowed_value: {
+      label: "Project Cost Center"
+      value: "cost_center_project"
+    }
+    allowed_value: {
+      label: "Project Environment Type"
+      value: "env_type_project"
+    }
+    allowed_value: {
+      label: "Project Service Name"
+      value: "service_name_project"
+    }
+    allowed_value: {
+      label: "Pillar Name"
+      value: "pillar_name"
+    }
+    allowed_value: {
+      label: "Sub Value Stream Name"
+      value: "sub_value_stream_name"
+    }
+    allowed_value: {
+      label: "Value Stream Name"
+      value: "value_stream_name"
+    }
+    allowed_value: {
+      label: "Value Stream Type"
+      value: "value_stream_type"
+    }
+  }
+
+
+  dimension: category_selected {
+    view_label: "Category Picker"
+    hidden: yes
+    sql:
+    {% if category._parameter_value == 'service__description' %} ${service__description}
+    {% elsif category._parameter_value == 'location__region' %} ${location__region}
+    {% elsif category._parameter_value == 'project__id' %} ${project__id}
+    {% elsif category._parameter_value == 'billing_account_id' %} ${billing_account_id}
+    {% elsif category._parameter_value == 'cb_environment_resource' %} ${cb_environment_resource}
+    {% elsif category._parameter_value == 'cb_product_resource' %} ${cb_product_resource}
+    {% elsif category._parameter_value == 'pod_resource' %} ${pod_resource}
+    {% elsif category._parameter_value == 'region_id_resource' %} ${region_id_resource}
+    {% elsif category._parameter_value == 'state_resource' %} ${state_resource}
+    {% elsif category._parameter_value == 'bu_project' %} ${bu_project}
+    {% elsif category._parameter_value == 'cb_environment_project' %} ${cb_environment_project}
+    {% elsif category._parameter_value == 'cost_center_project' %} ${cost_center_project}
+    {% elsif category._parameter_value == 'env_type_project' %} ${env_type_project}
+    {% elsif category._parameter_value == 'service_name_project' %} ${service_name_project}
+    {% elsif category._parameter_value == 'pillar_name' %} ${value_stream_info.pillar_name}
+    {% elsif category._parameter_value == 'sub_value_stream_name' %} ${value_stream_info.sub_value_stream_name}
+    {% elsif category._parameter_value == 'value_stream_name' %} ${value_stream_info.value_stream_name}
+    {% elsif category._parameter_value == 'value_stream_type' %} ${value_stream_info.value_stream_type}
+    {% else %} ${service__description}
+    {% endif %} ;;
+  }
+
+  parameter: date_selection {
+    type: unquoted
+    hidden: yes
+    view_label: "Category Picker"
+    allowed_value: {
+      label: "Daily"
+      value: "day"
+    }
+    allowed_value: { label: "Weekly" value: "week" }
+    allowed_value: { label: "Monthly" value: "month" }
+    allowed_value: { label: "Quarterly" value: "quarter" }
+    allowed_value: { label: "Yearly" value: "year" }
+  }
+
+  dimension: timeframe_selection {
+    label: "Timeframe Selection"
+    hidden: yes
+    view_label: "Category Picker"
+    sql:
+      {% if date_selection._parameter_value == 'day' %} ${usage_start_date}
+      {% elsif date_selection._parameter_value == 'week' %} ${usage_start_week}
+      {% elsif date_selection._parameter_value == 'quarter' %} ${usage_start_quarter}
+      {% elsif date_selection._parameter_value == 'year' %} ${usage_start_year}
+      {% else %} ${usage_start_month}
+      {% endif %} ;;
+  }
+
+
+}
