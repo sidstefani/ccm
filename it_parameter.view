@@ -1,0 +1,70 @@
+include: "/views/gcp_billing_export.view.lkml"
+
+  view: +gcp_billing_export {
+    parameter: category_it {
+      hidden: yes
+      label: "IT Category"
+      view_label: "Category Picker"
+      type: unquoted
+      allowed_value: {
+        label: "Application"
+        value: "application"
+      }
+      allowed_value: {
+        label: "Application Owner"
+        value: "application_owner"
+      }
+      allowed_value: {
+        label: "Availability"
+        value: "availability"
+      }
+      allowed_value: {
+        label: "Backup"
+        value: "backup"
+      }
+      allowed_value: {
+        label: "Cost Center"
+        value: "cost_center_it"
+      }
+      allowed_value: {
+        label: "Environment"
+        value: "env"
+      }
+      allowed_value: {
+        label: "Instance Owner"
+        value: "instance_owner"
+      }
+      allowed_value: {
+        label: "Location"
+        value: "location"
+      }
+      allowed_value: {
+        label: "Server Name"
+        value: "servername"
+      }
+      allowed_value: {
+        label: "Server Role"
+        value: "server_role"
+      }
+    }
+
+
+    dimension: category_selected_it {
+      hidden: yes
+      view_label: "Category Picker"
+      sql:
+          {% if category._parameter_value == 'application' %} ${application}
+          {% elsif category._parameter_value == 'application_owner' %} ${application_owner}
+          {% elsif category._parameter_value == 'availability' %} ${availability}
+          {% elsif category._parameter_value == 'backup' %} ${backup}
+          {% elsif category._parameter_value == 'cost_center_it' %} ${cost_center_it}
+          {% elsif category._parameter_value == 'env' %} ${env}
+          {% elsif category._parameter_value == 'instance_owner' %} ${instance_owner}
+          {% elsif category._parameter_value == 'location' %} ${location}
+          {% elsif category._parameter_value == 'servername' %} ${servername}
+          {% else %} ${server_role}
+          {% endif %} ;;
+    }
+
+
+}
