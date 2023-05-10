@@ -1,0 +1,60 @@
+include: "gcp_billing_export.view.lkml"
+view: spend {
+  sql_table_name: `TEST`
+    ;;
+
+  measure: commit_size {
+    type: sum
+    hidden: no
+    value_format_name: usd_0
+    sql: ${TABLE}.commit_size ;;
+    drill_fields: [month_month, commit_size]
+  }
+
+  dimension: cumulative_forecast {
+    type: number
+    primary_key:  yes
+    hidden: no
+    value_format_name: usd_0
+    sql: ${TABLE}.cumulative_forecast;;
+  }
+
+  # dimension: cumulative_spend {
+  #   type: number
+  #   hidden: no
+  #   value_format_name: usd_0
+  #   sql: ${gcp_billing_export.total_net_cost} ;;
+  # }
+
+  measure: total_spend {
+    type: running_total
+    hidden: no
+    value_format_name: usd_0
+    sql: ${gcp_billing_export.total_net_cost} ;;
+  }
+
+  measure: total_forecast {
+    type: max
+    hidden: no
+    value_format_name: usd_0
+    sql: ${cumulative_forecast};;
+  }
+
+  dimension_group: month {
+    type: time
+    label: ""
+    hidden: no
+    timeframes: [
+      month,
+      year
+    ]
+    datatype: date
+    sql: ${TABLE}.month ;;
+  }
+
+  measure: count {
+    type: count
+    hidden: yes
+    drill_fields: []
+  }
+}
