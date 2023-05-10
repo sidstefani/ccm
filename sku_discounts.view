@@ -1,0 +1,46 @@
+include: "/views/gcp_billing_export.view.lkml"
+
+view: ukg_sku_discounts {
+  sql_table_name: `TEST`
+    ;;
+
+  dimension: sku_description {
+    type: string
+    hidden: yes
+    sql: ${TABLE}.SKU_Description ;;
+  }
+
+  dimension: sku_id {
+    type: string
+    hidden: yes
+    sql: ${TABLE}.SKU_ID ;;
+    primary_key: yes
+  }
+
+  dimension: discount_multiplier {
+    type: number
+    hidden: no
+    sql: ${TABLE}.Discount_Multiplier ;;
+  }
+
+  dimension: discount {
+    type: number
+    hidden: yes
+    value_format_name: usd_0
+    sql: case when ${discount_multiplier} = 0 then ${gcp_billing_export.total_net_cost_dimension}
+          when ${discount_multiplier} > 0 then (1-${discount_multiplier})*${gcp_billing_export.total_net_cost_dimension}
+          else ${gcp_billing_export.total_net_cost_dimension} end ;;
+  }
+  measure: discount_total {
+    label: "Total Net Cost with Discount"
+    type: sum
+    value_format_name: usd_0
+    sql:  case when ${gcp_billing_export.billing_account_id} =  "0170EA-62117D-FDAA71" then ${discount}
+     when ${gcp_billing_export.billing_account_id} =  "01C205-FA5E8D-F9C014" then ${discount}
+     when ${gcp_billing_export.billing_account_id} =  "01BEA6-BDF313-42A8D8" then ${discount}
+     when ${gcp_billing_export.billing_account_id} =  "018930-A0908E-7F01E4" then ${discount}
+     when ${gcp_billing_export.billing_account_id} =  "015DC9-FEB96D-101370" then ${discount}
+     when ${gcp_billing_export.billing_account_id} =  "0191B6-261A53-CD647A" then ${discount}
+     else ${gcp_billing_export.total_net_cost_dimension} end;;
+ }
+}
