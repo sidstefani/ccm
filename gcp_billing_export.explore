@@ -1,0 +1,1333 @@
+include: "/views/*.view.lkml"
+
+explore: gcp_billing_export {
+  persist_with: daily_datagroup
+  label: "Billing"
+  sql_always_where:
+  TIMESTAMP_TRUNC(${usage_start_date}, MONTH) >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -14 MONTH);;
+
+  # join: gcp_billing_export__labels {
+  #   sql:LEFT JOIN UNNEST(${gcp_billing_export.labels}) as gcp_billing_export__labels ;;
+  #   relationship: one_to_many
+  # }
+
+  # join: gcp_billing_export__system_labels {
+  #   sql:LEFT JOIN UNNEST(${gcp_billing_export.system_labels}) as gcp_billing_export__system_labels ;;
+  #   relationship: one_to_many
+  # }
+
+  # join: gcp_billing_export__project__labels {
+  #   sql:LEFT JOIN UNNEST(${gcp_billing_export.project__labels}) as gcp_billing_export__project__labels ;;
+  #   relationship: one_to_many
+  # }
+
+  join: gcp_billing_export__credits {
+    sql:LEFT JOIN UNNEST(${gcp_billing_export.credits}) as gcp_billing_export__credits ;;
+    relationship: one_to_many
+  }
+
+  join: pricing {
+    relationship: one_to_one
+    sql_on: ${pricing.sku__id} = ${gcp_billing_export.sku__id} ;;
+  }
+
+  join: ukg_sku_discounts {
+    relationship: one_to_one
+    view_label: "Billing"
+    sql_on: ${ukg_sku_discounts.sku_id} = ${gcp_billing_export.sku__id} ;;
+  }
+
+  join: eligible_labels {
+    type:  left_outer
+    view_label: "Billing"
+    fields: [eligible_labels.labeling_supported]
+    relationship:  one_to_one
+    sql_on:  ${gcp_billing_export.service__id} = ${eligible_labels.service_id} ;;
+   }
+
+  join: spend {
+    relationship: one_to_one
+    type: full_outer
+    sql_on: ${gcp_billing_export.invoice_month_month} = ${spend.month_month} ;;
+  }
+
+  join: value_stream_info {
+    relationship: one_to_one
+    view_label: "Labels"
+    sql_on: ${value_stream_info.sub_value_stream_guuid} = ${gcp_billing_export.sub_stream_id} ;;
+  }
+
+  join: marketplace_mapping {
+    type: left_outer
+    view_label: "Pricing Taxonomy"
+    relationship: one_to_one
+    fields: [marketplace_mapping.marketplace_purchase]
+    sql_on: ${marketplace_mapping.sku__id} = ${gcp_billing_export.sku__id} ;;
+    }
+}
+
+
+#CUD RESOURCE DASHBOARD
+explore: +gcp_billing_export {
+  aggregate_table: rollup__project__id__0 {
+    query: {
+      dimensions: [project__id]
+      measures: [gcp_billing_export__credits.total_committed_use_discount, total_cost_at_on_demand_rates, total_cud_cost, total_net_cost]
+      filters: [
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__pricing_pricing_usage_type__project__id__usage_start_date__1 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        pricing.pricing_usage_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [usage__amount_in_calculated_units]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "Cores%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__project__id__usage_start_date__2 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [total_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "Cores%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__project__id__usage_start_date__3 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [total_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "RAM%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__pricing_pricing_type__project__id__usage__calculated_unit__usage_start_date__4 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        pricing.pricing_type,
+        project__id,
+        usage__calculated_unit,
+        usage_start_date
+      ]
+      measures: [total_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "Persistent Disk",
+        pricing.pricing_sub_type: "-NULL",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__project__id__sku__description__usage_start_date__5 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        project__id,
+        sku__description,
+        usage_start_date
+      ]
+      measures: [total_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "Persistent Disk",
+        pricing.pricing_sub_type: "-NULL",
+        pricing.pricing_type: "SSD Local,SSD Local On-demand",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__project__id__usage_start_date__6 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [total_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        gcp_billing_export.usage_start_month: "6 months",
+        pricing.pricing_category: "Persistent Disk",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__pricing_pricing_usage_type__project__id__usage_start_date__7 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        pricing.pricing_usage_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [usage__amount_in_calculated_units]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "RAM%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_month__8 {
+    query: {
+      dimensions: [usage_start_month]
+      measures: [gcp_billing_export__credits.total_committed_use_discount, total_cost, total_cud_cost, total_net_cost, total_non_cud_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month",
+        gcp_billing_export__credits.type: "-Discount",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "Cores%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__pricing_pricing_usage_type__project__id__usage_start_date__9 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        pricing.pricing_usage_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [usage__amount_in_calculated_units]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "RAM%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__pricing_pricing_usage_type__project__id__usage_start_date__10 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        pricing.pricing_usage_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [usage__amount_in_calculated_units]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "Cores%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_month__11 {
+    query: {
+      dimensions: [usage_start_month]
+      measures: [gcp_billing_export__credits.total_committed_use_discount, total_cost, total_cud_cost, total_net_cost, total_non_cud_cost]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month",
+        gcp_billing_export__credits.type: "-Discount",
+        pricing.pricing_category: "VM",
+        pricing.pricing_type: "RAM%",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__id_grouping__location__region__machine_type__pricing_pricing_usage_type__project__id__usage_start_date__12 {
+    query: {
+      dimensions: [
+        billing_account_id,
+        id_grouping,
+        location__region,
+        machine_type,
+        pricing.pricing_usage_type,
+        project__id,
+        usage_start_date
+      ]
+      measures: [usage__amount_in_calculated_units]
+      filters: [
+        gcp_billing_export.service__description: "Compute Engine",
+        pricing.pricing_category: "Persistent Disk",
+        pricing.pricing_usage_type: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
+
+#COST ALLOCATION DASHBOARD
+explore: +gcp_billing_export {
+  aggregate_table: rollup__cb_environment_resource__0 {
+    query: {
+      dimensions: [cb_environment_resource]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__region_id_resource__1 {
+    query: {
+      dimensions: [region_id_resource]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.partition_date: "6 months",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__pod_resource__2 {
+    query: {
+      dimensions: [pod_resource]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.partition_date: "6 months",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cb_product_resource__3 {
+    query: {
+      dimensions: [cb_product_resource]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.partition_date: "6 months",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__usage_start_week__4 {
+    query: {
+      dimensions: [bu_project, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.bu_project: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__pod_resource__usage_start_week__5 {
+    query: {
+      dimensions: [pod_resource, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.pod_resource: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__state_resource__6 {
+    query: {
+      dimensions: [state_resource]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.partition_date: "6 months",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__env_type_project__7 {
+    query: {
+      dimensions: [env_type_project]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cb_environment_project__8 {
+    query: {
+      dimensions: [cb_environment_project]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cost_center_project__9 {
+    query: {
+      dimensions: [cost_center_project]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__10 {
+    query: {
+      dimensions: [bu_project]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__service_name_project__11 {
+    query: {
+      dimensions: [service_name_project]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cb_environment_resource__usage_start_week__12 {
+    query: {
+      dimensions: [cb_environment_resource, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.cb_environment_resource: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cb_environment_project__usage_start_week__13 {
+    query: {
+      dimensions: [cb_environment_project, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.cb_environment_project: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__state_project__usage_start_week__14 {
+    query: {
+      dimensions: [state_project, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.state_project: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
+
+#EXECUTIVE SUMMARY DASHBOARD
+explore: +gcp_billing_export {
+  aggregate_table: rollup__invoice_month_month__0 {
+    query: {
+      dimensions: [invoice_month_month]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost, total_net_cost]
+      filters: [gcp_billing_export.invoice_month_month: "12 months"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__billing_account_id__1 {
+    query: {
+      dimensions: [billing_account_id]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost, total_net_cost]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__invoice_month_quarter__2 {
+    query: {
+      dimensions: [invoice_month_quarter]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost, total_net_cost]
+      filters: [gcp_billing_export.invoice_month_quarter: "5 quarters ago for 5 quarters"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__invoice_month_month__3 {
+    query: {
+      dimensions: [invoice_month_month]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost, total_net_cost]
+      filters: [
+        gcp_billing_export.invoice_month_month: "12 months",
+        gcp_billing_export.service__description: "Support"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cb_environment_resource__cb_product_resource__pod_resource__project__name__region_id_resource__service__description__sku__description__state_resource__4 {
+    query: {
+      dimensions: [
+        cb_environment_resource,
+        cb_product_resource,
+        pod_resource,
+        project__name,
+        region_id_resource,
+        service__description,
+        sku__description,
+        state_resource
+      ]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.cb_environment_resource: "NULL",
+        gcp_billing_export.cb_product_resource: "NULL",
+        gcp_billing_export.pod_resource: "NULL",
+        gcp_billing_export.region_id_resource: "NULL",
+        gcp_billing_export.state_resource: "NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cost_center_project__env_type_project__project__name__service__description__service_name_project__sku__description__5 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cost_center_project,
+        env_type_project,
+        project__name,
+        service__description,
+        service_name_project,
+        sku__description
+      ]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.bu_project: "NULL",
+        gcp_billing_export.cb_environment_project: "NULL",
+        gcp_billing_export.cost_center_project: "NULL",
+        gcp_billing_export.env_type_project: "NULL",
+        gcp_billing_export.service_name_project: "NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_year__6 {
+    query: {
+      dimensions: [usage_start_year]
+      measures: [spend.total_forecast, total_net_cost]
+      filters: [
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE,01282A-C67A19-71AD8B,015054-102162-1B625D,016EC6-D90C7B-D70D6B,0176EA-338517-754576,018CAC-4BE2F1-6811E7,01C707-65D497-45746D,01184-94340C-0FCEFC,012919-F31A4A-1DD2DA,01EC3B-CB3468-8C9AA4",
+        spend.month_month: "NOT NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
+
+#USAGE DEEP DIVE
+explore: +gcp_billing_export {
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__state_resour__0 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource,
+        usage_start_month
+      ]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_month: "2 months"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__state_resour__1 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource
+      ]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_year: "1 years"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__state_resour__2 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource,
+        usage_start_month
+      ]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_year: "12 months"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__state_resour__3 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource,
+        usage_start_month
+      ]
+      measures: [gcp_billing_export__credits.total_credit_amount]
+      filters: [gcp_billing_export.usage_start_month: "12 months"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__state_resour__4 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource,
+        usage_start_quarter
+      ]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_quarter: "2 quarters"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__state_resour__5 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource,
+        usage_start_year
+      ]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_year: "1 years"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__project__id__region_id_resource__service__description__service_name_project__sku__descrip__6 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        sku__description,
+        state_resource
+      ]
+      measures: [total_cost]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__bu_project__cb_environment_project__cb_environment_resource__cb_product_resource__cost_center_project__env_type_project__pod_resource__pricing_pricing_category__project__id__region_id_resource__service__description__service___7 {
+    query: {
+      dimensions: [
+        bu_project,
+        cb_environment_project,
+        cb_environment_resource,
+        cb_product_resource,
+        cost_center_project,
+        env_type_project,
+        pod_resource,
+        pricing.pricing_category,
+        project__id,
+        region_id_resource,
+        service__description,
+        service_name_project,
+        state_resource,
+        usage_start_month
+      ]
+      measures: [total_cost]
+      filters: [
+        gcp_billing_export.usage_start_year: "12 months",
+        pricing.pricing_category: "-NULL"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
+
+#IT COST ALLOCATION DASHBOARD
+explore: +gcp_billing_export {
+  aggregate_table: rollup__env__0 {
+    query: {
+      dimensions: [env]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__availability__1 {
+    query: {
+      dimensions: [availability]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__application__2 {
+    query: {
+      dimensions: [application]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__location__3 {
+    query: {
+      dimensions: [location]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cost_center_it__usage_start_week__4 {
+    query: {
+      dimensions: [cost_center_it, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.cost_center_it: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__cost_center_it__5 {
+    query: {
+      dimensions: [cost_center_it]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__server_role__6 {
+    query: {
+      dimensions: [server_role]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__servername__7 {
+    query: {
+      dimensions: [servername]
+      measures: [gcp_billing_export__credits.total_credit_amount, total_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__env__usage_start_week__8 {
+    query: {
+      dimensions: [env, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.env: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__location__usage_start_week__9 {
+    query: {
+      dimensions: [location, usage_start_week]
+      measures: [total_net_cost]
+      filters: [
+        eligible_labels.labeling_supported: "Yes",
+        gcp_billing_export.location: "-NULL",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "6 month ago for 6 month"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
+
+#CUD DETAILED DASHBOARD
+explore: +gcp_billing_export {
+  aggregate_table: rollup__location__region__usage_start_date__0 {
+    query: {
+      dimensions: [location__region, usage_start_date]
+      measures: [active_commitment, eligible_on_demand_usage, utilizied_commitment]
+      filters: [
+        # "gcp_billing_export.billing_account_id" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE",
+        # "gcp_billing_export.cpu_or_ram" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.cpu_or_ram: "CPU",
+        # "gcp_billing_export.machine_type" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.machine_type: "N2",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "1 week ago for 1 week"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_date__1 {
+    query: {
+      dimensions: [usage_start_date]
+      measures: [eligible_on_demand_usage, utilizied_commitment]
+      filters: [
+        # "gcp_billing_export.billing_account_id" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE",
+        # "gcp_billing_export.cpu_or_ram" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.cpu_or_ram: "CPU",
+        # "gcp_billing_export.machine_type" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.machine_type: "N2",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "1 week ago for 1 week",
+        gcp_billing_export__credits.type: "\"COMMITTED_USAGE_DISCOUNT\""
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__project__id__usage_start_date__2 {
+    query: {
+      dimensions: [project__id, usage_start_date]
+      measures: [active_commitment, eligible_on_demand_usage, utilizied_commitment]
+      filters: [
+        # "gcp_billing_export.billing_account_id" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE",
+        # "gcp_billing_export.cpu_or_ram" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.cpu_or_ram: "CPU",
+        # "gcp_billing_export.machine_type" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.machine_type: "N2",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "1 week ago for 1 week"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__machine_type__usage_start_date__3 {
+    query: {
+      dimensions: [machine_type, usage_start_date]
+      measures: [eligible_on_demand_usage]
+      filters: [
+        # "gcp_billing_export.billing_account_id" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE",
+        # "gcp_billing_export.cpu_or_ram" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.cpu_or_ram: "CPU",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "1 week ago for 1 week",
+        gcp_billing_export__credits.type: "\"COMMITTED_USAGE_DISCOUNT\""
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_date__4 {
+    query: {
+      dimensions: [usage_start_date]
+      measures: [active_commitment, all_usage, eligible_on_demand_usage, utilizied_commitment]
+      filters: [
+        # "gcp_billing_export.billing_account_id" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE",
+        # "gcp_billing_export.cpu_or_ram" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.cpu_or_ram: "CPU",
+        # "gcp_billing_export.machine_type" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.machine_type: "N2",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "1 week ago for 1 week"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_date__5 {
+    query: {
+      dimensions: [usage_start_date]
+      measures: [active_commitment, eligible_on_demand_usage, utilizied_commitment]
+      filters: [
+        # "gcp_billing_export.billing_account_id" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.billing_account_id: "018737-F5C9DA-5014BE",
+        # "gcp_billing_export.cpu_or_ram" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.cpu_or_ram: "CPU",
+        # "gcp_billing_export.machine_type" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.machine_type: "N2",
+        # "gcp_billing_export.usage_start_date" was filtered by dashboard. The aggregate table will only optimize against exact match queries.
+        gcp_billing_export.usage_start_date: "1 week ago for 1 week"
+      ]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
+
+#GCP Summary Dashboard
+explore: +gcp_billing_export {
+  aggregate_table: rollup__usage_start_year__0 {
+    query: {
+      dimensions: [usage_start_year]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_year: "2 years"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__project__name__1 {
+    query: {
+      dimensions: [project__name]
+      measures: [gcp_billing_export__credits.total_credit_amount]
+      filters: [gcp_billing_export.usage_start_week: "52 weeks"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__project__name__2 {
+    query: {
+      dimensions: [project__name]
+      measures: [total_cost]
+      filters: [gcp_billing_export.project__name: "-NULL"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_week__3 {
+    query: {
+      dimensions: [usage_start_week]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_date: "2 weeks"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_quarter__4 {
+    query: {
+      dimensions: [usage_start_quarter]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_quarter: "2 quarters"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+
+  aggregate_table: rollup__usage_start_month__5 {
+    query: {
+      dimensions: [usage_start_month]
+      measures: [total_cost]
+      filters: [gcp_billing_export.usage_start_date: "2 months"]
+    }
+
+    materialization: {
+      datagroup_trigger: daily_datagroup
+    }
+  }
+}
