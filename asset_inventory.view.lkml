@@ -1,5 +1,5 @@
 view: assets_inventory {
-  sql_table_name: `consolidated-billing-export-12.consolidatedbillingexport.assets_inventory_resource_vw`
+  sql_table_name: `TABLE`
     ;;
 
   dimension: ancestors {
